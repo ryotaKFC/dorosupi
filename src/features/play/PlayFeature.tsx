@@ -85,6 +85,7 @@ export function PlayFeature() {
     lastPayload,
     enabled,
   } = useMqttController({
+    topic: "yokohama/hackathon/running/player1",
     onPayload: handlePayload,
     multiPlayer: true, // 2-4人対応
   });
