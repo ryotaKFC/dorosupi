@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDrawings } from "@/features/play/api/fetchDrawings";
 import { DrawingGrid } from "@/features/play/components/DrawingGrid";
 import { GameSelection } from "@/features/play/components/GameSelection";
+import { RaceGame } from "@/features/play/components/RaceGame";
 import { SelectedStage } from "@/features/play/components/SelectedStage";
 import { useMqttController } from "@/features/play/hooks/useMqttController";
 import type {
@@ -204,8 +205,13 @@ export function PlayFeature() {
     setSelectedGame(gameId);
   };
 
+  const handleBackFromGame = () => {
+    setShowGameSelection(false);
+    setSelectedGame(null);
+  };
+
   // ゲーム選択画面を表示中
-  if (showGameSelection) {
+  if (showGameSelection && !selectedGame) {
     // pairingsからプレイヤーの選択絵を構築
     const playerSelections: Record<string, DrawingBlob | null> = {
       player1: player1Drawing || null,
@@ -216,6 +222,18 @@ export function PlayFeature() {
       <GameSelection
         playerSelections={playerSelections}
         onSelectGame={handleSelectGame}
+      />
+    );
+  }
+
+  // ゲーム画面を表示中
+  if (selectedGame === "race" && player1Drawing && player2Drawing) {
+    return (
+      <RaceGame
+        player1Drawing={player1Drawing}
+        player2Drawing={player2Drawing}
+        onPayload={handlePayload}
+        onBack={handleBackFromGame}
       />
     );
   }
