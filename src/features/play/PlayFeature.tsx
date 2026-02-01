@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDrawings } from "@/features/play/api/fetchDrawings";
 import { DrawingGrid } from "@/features/play/components/DrawingGrid";
+import { GameSelection } from "@/features/play/components/GameSelection";
 import { SelectedStage } from "@/features/play/components/SelectedStage";
 import { useMqttController } from "@/features/play/hooks/useMqttController";
 import type {
@@ -26,6 +27,8 @@ export function PlayFeature() {
   const [activeDrawing, setActiveDrawing] = useState<DrawingBlob | null>(null);
   const [pairings, setPairings] = useState<Map<string, string>>(new Map()); // controllerId -> drawingId
   const [positions, setPositions] = useState<Map<string, Position>>(new Map()); // drawingId -> Position
+  const [showGameSelection, setShowGameSelection] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,7 +52,7 @@ export function PlayFeature() {
       // 接続イベントの処理
       if (payload.event === "connect" && payload.id) {
         const controllerId = payload.id;
-        
+
         // activeDrawingがあればそれをペアリング、なければスキップ
         if (activeDrawing) {
           const drawingId = activeDrawing.id;
@@ -142,8 +145,8 @@ export function PlayFeature() {
     return connected
       ? "M5Stickとつながりました"
       : connecting
-      ? "接続中..."
-      : "接続待ち";
+        ? "接続中..."
+        : "接続待ち";
   }, [connected, connecting, enabled, mqttError]);
 
   const handleSelect = (item: DrawingBlob) => {
@@ -161,7 +164,10 @@ export function PlayFeature() {
     setActiveDrawing(null);
   };
 
-  const pairedDrawingIds = useMemo(() => new Set(pairings.values()), [pairings]);
+  const pairedDrawingIds = useMemo(
+    () => new Set(pairings.values()),
+    [pairings],
+  );
 
   // 表示する用のペアリング情報（描画が主キー）
   const stagePairings = useMemo(() => {
@@ -193,6 +199,26 @@ export function PlayFeature() {
     }
     return null;
   }, [pairings, drawings]);
+
+  const handleSelectGame = (gameId: string) => {
+    setSelectedGame(gameId);
+  };
+
+  // ゲーム選択画面を表示中
+  if (showGameSelection) {
+    // pairingsからプレイヤーの選択絵を構築
+    const playerSelections: Record<string, DrawingBlob | null> = {
+      player1: player1Drawing || null,
+      player2: player2Drawing || null,
+    };
+
+    return (
+      <GameSelection
+        playerSelections={playerSelections}
+        onSelectGame={handleSelectGame}
+      />
+    );
+  }
 
   return (
     <main
@@ -271,7 +297,7 @@ export function PlayFeature() {
           {pairings.size > 0 && (
             <button
               type="button"
-              onClick={() => {}}
+              onClick={() => setShowGameSelection(true)}
               className="ml-4 shrink-0 px-4 py-2 bg-green-500 hover:bg-green-600 active:scale-95 text-white font-bold rounded-xl border-3 border-green-700 transition-all shadow-lg"
             >
               ゲーム
