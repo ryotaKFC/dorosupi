@@ -90,6 +90,33 @@ export function PlayFeature() {
     multiPlayer: true, // 2-4人対応
   });
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key;
+
+      if (key === "1") {
+        handlePayload({ raw: "run", button: "run", playerId: "player1" });
+        return;
+      }
+
+      const arrowMap: Record<string, ControllerPayload> = {
+        ArrowUp: { raw: "up", button: "up", playerId: "player1" },
+        ArrowDown: { raw: "down", button: "down", playerId: "player1" },
+        ArrowLeft: { raw: "left", button: "left", playerId: "player1" },
+        ArrowRight: { raw: "right", button: "right", playerId: "player1" },
+      };
+
+      const payload = arrowMap[key];
+      if (payload) {
+        event.preventDefault();
+        handlePayload(payload);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handlePayload]);
+
   const headerStatus = useMemo(() => {
     if (!enabled)
       return "MQTTの接続先を設定してください (NEXT_PUBLIC_MQTT_BROKER_URL)";
