@@ -30,7 +30,7 @@ export function GameSelection({
 }: GameSelectionProps) {
   return (
     <main
-      className={`min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col items-center justify-center p-4 ${cherryBomb.className}`}
+      className={`min-h-screen bg-linear-to-b from-sky-100 via-white to-orange-100 flex flex-col items-center justify-center p-4 ${cherryBomb.className}`}
     >
       <div className="absolute top-3 right-3 md:top-4 md:right-6 z-10 flex flex-col gap-2">
         {playerSelections.player1 && (

@@ -150,7 +150,7 @@ export default function DrawPage() {
 
   return (
     <main
-      className={`min-h-screen bg-gradient-to-b from-pink-200 to-blue-200 p-6 flex flex-col items-center justify-center ${cherryBomb.className}`}
+      className={`min-h-screen bg-linear-to-b from-pink-200 to-blue-200 p-6 flex flex-col items-center justify-center ${cherryBomb.className}`}
     >
       <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-4xl">
         <h1 className="text-5xl font-bold text-center mb-8 text-purple-600 drop-shadow-md">

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDrawings } from "@/features/play/api/fetchDrawings";
 import { DrawingGrid } from "@/features/play/components/DrawingGrid";
-import { GameSelection } from "@/features/play/components/GameSelection";
 import { SelectedStage } from "@/features/play/components/SelectedStage";
 import { useMqttController } from "@/features/play/hooks/useMqttController";
 import type {
@@ -20,25 +19,6 @@ const cherryBomb = Cherry_Bomb_One({
   display: "swap",
 });
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
-
-function movePosition(current: Position, payload: ControllerPayload): Position {
-  const step = payload.step ?? 6;
-  const button = payload.button;
-
-  const buttonDx = button === "right" ? step : button === "left" ? -step : 0;
-  const buttonDy = button === "down" ? step : button === "up" ? -step : 0;
-
-  const dx = (payload.dx ?? 0) + buttonDx;
-  const dy = (payload.dy ?? 0) + buttonDy;
-
-  const nextX = clamp(current.x + dx, -40, 40);
-  const nextY = clamp(current.y + dy, -40, 40);
-
-  return { x: nextX, y: nextY };
-}
-
 export function PlayFeature() {
   const [drawings, setDrawings] = useState<DrawingBlob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,13 +26,6 @@ export function PlayFeature() {
   const [activeDrawing, setActiveDrawing] = useState<DrawingBlob | null>(null);
   const [pairings, setPairings] = useState<Map<string, string>>(new Map()); // controllerId -> drawingId
   const [positions, setPositions] = useState<Map<string, Position>>(new Map()); // drawingId -> Position
-<!--   const [playerSelections, setPlayerSelections] = useState<
-    Record<string, DrawingBlob | null>
-  >({ player1: null, player2: null });
-  const [paired, setPaired] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
-  const [gameStarted, setGameStarted] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,44 +47,34 @@ export function PlayFeature() {
   const handlePayload = useCallback(
     (payload: ControllerPayload) => {
       // 接続イベントの処理
-      if (payload.event === "connect" && payload.id && activeDrawing) {
+      if (payload.event === "connect" && payload.id) {
         const controllerId = payload.id;
-        const drawingId = activeDrawing.id;
+        
+        // activeDrawingがあればそれをペアリング、なければスキップ
+        if (activeDrawing) {
+          const drawingId = activeDrawing.id;
 
-        setPairings((prev) => {
-          const newPairings = new Map(prev);
+          setPairings((prev) => {
+            const newPairings = new Map(prev);
 
-          // このコントローラーIDまたは描画IDに紐づく既存のペアをすべて解除
-          for (const [cId, dId] of newPairings.entries()) {
-            if (cId === controllerId || dId === drawingId) {
-              newPairings.delete(cId);
+            // このコントローラーIDまたは描画IDに紐づく既存のペアをすべて解除
+            for (const [cId, dId] of newPairings.entries()) {
+              if (cId === controllerId || dId === drawingId) {
+                newPairings.delete(cId);
+              }
             }
-          }
 
-          newPairings.set(controllerId, drawingId);
-          return newPairings;
-        });
+            newPairings.set(controllerId, drawingId);
+            return newPairings;
+          });
 
-        // 新しくペアリングされた描画の位置を初期化
-        setPositions((prev) => new Map(prev).set(drawingId, { x: 0, y: 0 }));
-        // 描画を選択解除
-        setActiveDrawing(null);
-//       if (!activeDrawing) return;
-//       if (!paired) {
-//         setPaired(true);
-//         setPlayerSelections((prev) => ({
-//           ...prev,
-//           [payload.playerId ?? "player1"]: activeDrawing,
-//         }));
+          // 新しくペアリングされた描画の位置を初期化
+          setPositions((prev) => new Map(prev).set(drawingId, { x: 0, y: 0 }));
+          // 描画を選択解除
+          setActiveDrawing(null);
+        }
         return;
       }
-
-      // TODO: `run`イベント(M5Stickを振る)にコントローラーIDが含まれていないため、
-      // どのコントローラーがどの描画を動かすべきか判断できない。
-      // 現在は`useMqttController`がトピックから`playerId`を抽出しているが、
-      // `m5stick.ino`の`run`イベントは一意なトピックで送信していない。
-      // この部分を修正するには、`.ino`側で`run`イベントにもコントローラーIDを含める必要がある。
-      // 例: `mqtt.publish(TOPIC_RUN, "{\"id\":\"" + macAddress + "\",\"event\":\"run\"}")`
     },
     [activeDrawing],
   );
@@ -132,13 +95,25 @@ export function PlayFeature() {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key;
 
+      // デバッグ用: キー1 = プレイヤー1のコントローラーが接続
       if (key === "1") {
-        handlePayload({ raw: "run", button: "run", playerId: "player1" });
+        handlePayload({
+          raw: '{"id":"m5stick-player1","event":"connect"}',
+          event: "connect",
+          id: "m5stick-player1",
+          playerId: "player1",
+        });
         return;
       }
 
+      // デバッグ用: キー2 = プレイヤー2のコントローラーが接続
       if (key === "2") {
-        handlePayload({ raw: "run", button: "run", playerId: "player2" });
+        handlePayload({
+          raw: '{"id":"m5stick-player2","event":"connect"}',
+          event: "connect",
+          id: "m5stick-player2",
+          playerId: "player2",
+        });
         return;
       }
 
@@ -183,33 +158,10 @@ export function PlayFeature() {
   };
 
   const handleRelease = () => {
-    // 選択中の描画をペアリング解除するロジックはここには含めない
     setActiveDrawing(null);
-<!--     setPlayerSelections((prev) => ({ ...prev, player1: null, player2: null }));
-    setPaired(false);
-    setPosition({ x: 0, y: 0 }); -->
   };
 
   const pairedDrawingIds = useMemo(() => new Set(pairings.values()), [pairings]);
-
-  const isSelectedPaired = useMemo(() => {
-    if (!activeDrawing) return false;
-    return pairedDrawingIds.has(activeDrawing.id);
-  }, [activeDrawing, pairedDrawingIds]);
-
-  const drawingsToShow = useMemo(() => {
-    // ペアリングされていない描画、または現在選択中の描画のみ表示
-    return drawings.filter(
-      (d) => !pairedDrawingIds.has(d.id) || d.id === activeDrawing?.id,
-    );
-  }, [drawings, pairedDrawingIds, activeDrawing]);
-
-  const gridTitle = useMemo(() => {
-    if (!activeDrawing) return "絵をえらぶ";
-    return isSelectedPaired
-      ? "この絵はペア済みです"
-      : "M5StickのAボタンで決定";
-  }, [activeDrawing, isSelectedPaired]);
 
   // 表示する用のペアリング情報（描画が主キー）
   const stagePairings = useMemo(() => {
@@ -222,59 +174,65 @@ export function PlayFeature() {
     }
     return map;
   }, [pairings, positions]);
-  const handleGameSelect = (gameId: string) => {
-    setSelectedGame(gameId);
-    setGameStarted(true);
-  };
 
-  if (gameStarted && selectedGame) {
-    return (
-      <GameSelection
-        playerSelections={playerSelections}
-        onSelectGame={handleGameSelect}
-      />
-    );
-  }
+  // P1/P2が接続している絵を取得
+  const player1Drawing = useMemo(() => {
+    for (const [controllerId, drawingId] of pairings.entries()) {
+      if (controllerId.includes("player1")) {
+        return drawings.find((d) => d.id === drawingId);
+      }
+    }
+    return null;
+  }, [pairings, drawings]);
+
+  const player2Drawing = useMemo(() => {
+    for (const [controllerId, drawingId] of pairings.entries()) {
+      if (controllerId.includes("player2")) {
+        return drawings.find((d) => d.id === drawingId);
+      }
+    }
+    return null;
+  }, [pairings, drawings]);
 
   return (
     <main
-      className={`relative min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
+      className={`relative min-h-screen bg-linear-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
     >
       <div className="absolute top-3 right-3 md:top-4 md:right-6 z-10 flex flex-col gap-2">
         <div className="bg-white/90 border-2 border-gray-700 rounded-xl px-3 py-2 shadow-md">
           <div className="text-xs font-black text-gray-700">P1</div>
-          {playerSelections.player1 ? (
-            <div className="mt-1 h-10 w-10 rounded-lg overflow-hidden border border-gray-300">
+          {player1Drawing ? (
+            <div className="mt-1 h-12 w-12 rounded-lg overflow-hidden border border-gray-300">
               <Image
-                src={playerSelections.player1.url}
+                src={player1Drawing.url}
                 alt="player1 drawing"
-                width={40}
-                height={40}
+                width={48}
+                height={48}
                 className="h-full w-full object-cover"
               />
             </div>
           ) : (
-            <div className="text-[10px] text-gray-400">-</div>
+            <div className="text-[10px] text-gray-400">未接続</div>
           )}
         </div>
         <div className="bg-white/90 border-2 border-gray-700 rounded-xl px-3 py-2 shadow-md">
           <div className="text-xs font-black text-gray-700">P2</div>
-          {playerSelections.player2 ? (
-            <div className="mt-1 h-10 w-10 rounded-lg overflow-hidden border border-gray-300">
+          {player2Drawing ? (
+            <div className="mt-1 h-12 w-12 rounded-lg overflow-hidden border border-gray-300">
               <Image
-                src={playerSelections.player2.url}
+                src={player2Drawing.url}
                 alt="player2 drawing"
-                width={40}
-                height={40}
+                width={48}
+                height={48}
                 className="h-full w-full object-cover"
               />
             </div>
           ) : (
-            <div className="text-[10px] text-gray-400">-</div>
+            <div className="text-[10px] text-gray-400">未接続</div>
           )}
         </div>
       </div>
-      <header className="flex-shrink-0 flex flex-col gap-2 rounded-b-3xl border-b-8 border-gray-700 bg-white/90 p-4 md:p-6 shadow-lg backdrop-blur">
+      <header className="shrink-0 flex flex-col gap-2 rounded-b-3xl border-b-8 border-gray-700 bg-white/90 p-4 md:p-6 shadow-lg backdrop-blur">
         <h1 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3">
           <span role="img" aria-label="gamepad">
             🎮
@@ -301,20 +259,20 @@ export function PlayFeature() {
           onRelease={handleRelease}
         />
 
-        <div className="flex-shrink-0 border-t-4 border-gray-700 pt-4 flex items-center justify-between">
+        <div className="shrink-0 border-t-4 border-gray-700 pt-4 flex items-center justify-between">
           <div className="flex-1">
             <DrawingGrid
               items={drawings}
               onSelect={handleSelect}
               isLoading={loading}
-              title={paired ? "ほかの絵" : "絵をえらぶ"}
+              activeDrawingId={activeDrawing?.id}
             />
           </div>
-          {paired && (
+          {pairings.size > 0 && (
             <button
               type="button"
-              onClick={() => handleGameSelect("temp")}
-              className="ml-4 flex-shrink-0 px-4 py-2 bg-green-500 hover:bg-green-600 active:scale-95 text-white font-bold rounded-xl border-3 border-green-700 transition-all shadow-lg"
+              onClick={() => {}}
+              className="ml-4 shrink-0 px-4 py-2 bg-green-500 hover:bg-green-600 active:scale-95 text-white font-bold rounded-xl border-3 border-green-700 transition-all shadow-lg"
             >
               ゲーム
             </button>
