@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ControllerPayload, DrawingBlob } from "@/features/play/types";
 import { RaceTrack } from "./RaceTrack";
-import type { DrawingBlob, ControllerPayload } from "@/features/play/types";
 
 type GamePhase = "ready" | "race" | "finish";
 
@@ -186,7 +186,9 @@ export function RaceGame({
                 >
                   1
                 </div>
-                <span className="text-2xl font-bold text-gray-600">ふって!</span>
+                <span className="text-2xl font-bold text-gray-600">
+                  ふって!
+                </span>
               </div>
               <div className="flex flex-col items-center gap-2">
                 <div
@@ -195,7 +197,9 @@ export function RaceGame({
                 >
                   2
                 </div>
-                <span className="text-2xl font-bold text-gray-600">ふって!</span>
+                <span className="text-2xl font-bold text-gray-600">
+                  ふって!
+                </span>
               </div>
             </div>
           )}
@@ -203,7 +207,9 @@ export function RaceGame({
           {gamePhase === "finish" && (
             <div className="flex flex-col gap-6 items-center">
               <div className="text-5xl md:text-6xl font-bold text-gray-800 text-center">
-                {winner === 1 ? "🎉 プレイヤー1のかち! 🎉" : "🎉 プレイヤー2のかち! 🎉"}
+                {winner === 1
+                  ? "🎉 プレイヤー1のかち! 🎉"
+                  : "🎉 プレイヤー2のかち! 🎉"}
               </div>
               <div className="flex gap-4">
                 <button
