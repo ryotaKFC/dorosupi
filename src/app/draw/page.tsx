@@ -150,19 +150,19 @@ export default function DrawPage() {
 
   return (
     <main
-      className={`min-h-screen bg-linear-to-b from-pink-200 to-blue-200 p-6 flex flex-col items-center justify-center ${cherryBomb.className}`}
+      className={`h-screen overflow-hidden bg-gradient-to-b from-pink-200 to-blue-200 p-4 flex flex-col items-center justify-center ${cherryBomb.className}`}
     >
-      <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-4xl">
-        <h1 className="text-5xl font-bold text-center mb-8 text-purple-600 drop-shadow-md">
+      <div className="bg-white rounded-3xl shadow-xl p-4 w-full max-w-4xl h-full flex flex-col">
+        <h1 className="text-4xl font-bold text-center mb-4 text-purple-600 drop-shadow-md">
           おえかき
         </h1>
 
         {/* キャンバス */}
-        <div className="mb-8 border-8 border-gray-600 rounded-2xl overflow-hidden bg-transparent shadow-lg">
+        <div className="mb-4 border-8 border-gray-600 rounded-2xl overflow-hidden bg-transparent shadow-lg flex-shrink-0">
           <canvas
             ref={canvasRef}
             width={800}
-            height={500}
+            height={350}
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
@@ -175,15 +175,15 @@ export default function DrawPage() {
         </div>
 
         {/* 色パレット */}
-        <div className="mb-8">
-          <p className="text-2xl font-bold mb-4 text-gray-700">いろ</p>
-          <div className="flex flex-wrap gap-3 mb-6">
+        <div className="mb-4">
+          <p className="text-lg font-bold mb-2 text-gray-700">いろ</p>
+          <div className="flex flex-wrap gap-2 mb-3">
             {COLORS.map((color) => (
               <button
                 type="button"
                 key={color.hex}
                 onClick={() => setCurrentColor(color.hex)}
-                className={`w-20 h-20 rounded-2xl border-4 transition-transform hover:scale-110 active:scale-95 flex flex-col items-center justify-center gap-1 ${
+                className={`w-14 h-14 rounded-2xl border-4 transition-transform hover:scale-110 active:scale-95 flex flex-col items-center justify-center gap-1 ${
                   currentColor === color.hex
                     ? "border-gray-800 shadow-lg scale-110"
                     : "border-gray-400"
@@ -205,11 +205,9 @@ export default function DrawPage() {
         </div>
 
         {/* ブラシサイズ */}
-        <div className="mb-8">
-          <p className="text-2xl font-bold mb-4 text-gray-700">
-            ふでのおおきさ
-          </p>
-          <div className="flex items-center gap-4">
+        <div className="mb-4">
+          <p className="text-lg font-bold mb-2 text-gray-700">ふでのおおきさ</p>
+          <div className="flex items-center gap-3">
             <input
               type="range"
               min="2"
@@ -218,20 +216,20 @@ export default function DrawPage() {
               onChange={(e) => setBrushSize(Number(e.target.value))}
               className="flex-1 h-3 bg-gray-300 rounded-lg appearance-none cursor-pointer"
             />
-            <div className="text-3xl">{brushSize}px</div>
+            <div className="text-xl">{brushSize}px</div>
             <div
-              className="w-12 h-12 rounded-full"
+              className="w-10 h-10 rounded-full"
               style={{ backgroundColor: currentColor }}
             />
           </div>
         </div>
 
         {/* ボタン */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center mb-2">
           <button
             type="button"
             onClick={clearCanvas}
-            className="px-8 py-4 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-2xl font-bold rounded-2xl border-4 border-red-700 transition-all shadow-lg"
+            className="px-6 py-3 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xl font-bold rounded-2xl border-4 border-red-700 transition-all shadow-lg"
           >
             リセット
           </button>
@@ -239,7 +237,7 @@ export default function DrawPage() {
             type="button"
             onClick={saveDrawing}
             disabled={isSaving}
-            className="px-8 py-4 bg-green-500 hover:bg-green-600 active:scale-95 disabled:bg-gray-400 text-white text-2xl font-bold rounded-2xl border-4 border-green-700 transition-all shadow-lg"
+            className="px-6 py-3 bg-green-500 hover:bg-green-600 active:scale-95 disabled:bg-gray-400 text-white text-xl font-bold rounded-2xl border-4 border-green-700 transition-all shadow-lg"
           >
             {isSaving ? "ほぞんちゅう..." : "ほぞん"}
           </button>
@@ -247,7 +245,7 @@ export default function DrawPage() {
 
         {/* 保存完了メッセージ */}
         {saveSuccess && (
-          <div className="mt-8 p-4 bg-green-200 border-4 border-green-500 rounded-2xl text-center text-2xl font-bold text-green-700">
+          <div className="p-3 bg-green-200 border-4 border-green-500 rounded-2xl text-center text-lg font-bold text-green-700">
             ✓ ほぞんされました！
           </div>
         )}
