@@ -9,7 +9,7 @@ type PillTone = "success" | "warn" | "idle";
 
 interface SelectedStageProps {
   drawings: DrawingBlob[];
-  stagePairings: Map<string, { position: Position; controllerId: string }>;
+  stagePairings: Map<string, { position: Position; playerId: string }>;
   connected: boolean;
   connecting: boolean;
   lastPayload: ControllerPayload | null;
@@ -43,9 +43,9 @@ export function SelectedStage({
   drawing,
 }: SelectedStageProps) {
   const pairedDrawings = Array.from(stagePairings.entries()).map(
-    ([drawingId, { position, controllerId }]) => {
+    ([drawingId, { position, playerId }]) => {
       const pairedDrawing = drawings.find((d) => d.id === drawingId);
-      return { drawing: pairedDrawing, position, controllerId };
+      return { drawing: pairedDrawing, position, playerId };
     },
   );
 
@@ -88,7 +88,7 @@ export function SelectedStage({
         ) : (
           <>
             {pairedDrawings.map(
-              ({ drawing: pairedDrawing, position, controllerId }) =>
+              ({ drawing: pairedDrawing, position, playerId }) =>
                 !pairedDrawing ? null : (
                   <div
                     key={pairedDrawing.id}
@@ -106,7 +106,7 @@ export function SelectedStage({
                         className="object-contain drop-shadow-2xl"
                       />
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-full bg-black/50 text-white px-2 py-1 text-xs">
-                        {controllerId.slice(-5)}
+                        {playerId}
                       </div>
                     </div>
                   </div>

@@ -21,12 +21,31 @@ const cherryBomb = Cherry_Bomb_One({
   display: "swap",
 });
 
+// MacアドレスからplayerIdを推測
+function resolvePlayerIdFromMac(macAddress: string): string {
+  // 環境変数でマッピング設定があれば使う
+  // 例: NEXT_PUBLIC_PLAYER1_MAC=00:4B:12:C4:FF:18
+  const player1Mac = process.env.NEXT_PUBLIC_PLAYER1_MAC?.toUpperCase();
+  const player2Mac = process.env.NEXT_PUBLIC_PLAYER2_MAC?.toUpperCase();
+  const upperMac = macAddress.toUpperCase();
+
+  if (player1Mac && upperMac === player1Mac) return "player1";
+  if (player2Mac && upperMac === player2Mac) return "player2";
+
+  // マッピング設定がない場合は末尾で判定
+  // 末尾が小さい = player1, 大きい = player2
+  const lastByte = macAddress.split(":").pop()?.toUpperCase() || "00";
+  const lastByteNum = parseInt(lastByte, 16);
+
+  return lastByteNum < 0x80 ? "player1" : "player2";
+}
+
 export function PlayFeature() {
   const [drawings, setDrawings] = useState<DrawingBlob[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeDrawing, setActiveDrawing] = useState<DrawingBlob | null>(null);
-  const [pairings, setPairings] = useState<Map<string, string>>(new Map()); // controllerId -> drawingId
+  const [pairings, setPairings] = useState<Map<string, { playerId: string; drawingId: string }>>(new Map()); // macAddress -> { playerId, drawingId }
   const [positions, setPositions] = useState<Map<string, Position>>(new Map()); // drawingId -> Position
   const [showGameSelection, setShowGameSelection] = useState(false);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
@@ -48,39 +67,67 @@ export function PlayFeature() {
     return () => controller.abort();
   }, []);
 
+  const resolveMacAddress = useCallback((payload: ControllerPayload): string | null => {
+    // Macアドレスを抽出
+    if (payload.id && payload.id.includes(":")) {
+      return payload.id.toUpperCase();
+    }
+    return null;
+  }, []);
+
   const handlePayload = useCallback(
     (payload: ControllerPayload) => {
       // 接続イベントの処理
-      if (payload.event === "connect" && payload.id) {
-        const controllerId = payload.id;
+      if (payload.event === "connect") {
+        // activeDrawingがなければペアリング処理をしない
+        if (!activeDrawing) return;
 
-        // activeDrawingがあればそれをペアリング、なければスキップ
-        if (activeDrawing) {
-          const drawingId = activeDrawing.id;
+        const macAddress = resolveMacAddress(payload);
+        if (!macAddress) return;
 
-          setPairings((prev) => {
-            const newPairings = new Map(prev);
+        const drawingId = activeDrawing.id;
 
-            // このコントローラーIDまたは描画IDに紐づく既存のペアをすべて解除
-            for (const [cId, dId] of newPairings.entries()) {
-              if (cId === controllerId || dId === drawingId) {
-                newPairings.delete(cId);
+        setPairings((prev) => {
+          const newPairings = new Map(prev);
+
+          // 既にこのMacアドレスが登録されているか確認
+          const existingPairing = newPairings.get(macAddress);
+          if (existingPairing) {
+            // 既存の場合：同じプレイヤーの絵を更新
+            newPairings.set(macAddress, {
+              playerId: existingPairing.playerId,
+              drawingId,
+            });
+          } else {
+            // 新規の場合：プレイヤー1が存在するかチェック
+            const player1Exists = Array.from(newPairings.values()).some(
+              (pairing) => pairing.playerId === "player1"
+            );
+            const assignedPlayerId = player1Exists ? "player2" : "player1";
+
+            // 同じ描画IDの別のMacアドレスペアリングを削除
+            for (const [mac, pairing] of newPairings.entries()) {
+              if (pairing.drawingId === drawingId) {
+                newPairings.delete(mac);
               }
             }
 
-            newPairings.set(controllerId, drawingId);
-            return newPairings;
-          });
+            newPairings.set(macAddress, {
+              playerId: assignedPlayerId,
+              drawingId,
+            });
+          }
+          return newPairings;
+        });
 
-          // 新しくペアリングされた描画の位置を初期化
-          setPositions((prev) => new Map(prev).set(drawingId, { x: 0, y: 0 }));
-          // 描画を選択解除
-          setActiveDrawing(null);
-        }
+        // 新しくペアリングされた描画の位置を初期化
+        setPositions((prev) => new Map(prev).set(drawingId, { x: 0, y: 0 }));
+        // 描画を選択解除
+        setActiveDrawing(null);
         return;
       }
     },
-    [activeDrawing],
+    [activeDrawing, resolveMacAddress],
   );
 
   const {
@@ -99,25 +146,22 @@ export function PlayFeature() {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key;
 
-      // デバッグ用: キー1 = プレイヤー1のコントローラーが接続
-      if (key === "1") {
-        handlePayload({
-          raw: '{"id":"m5stick-player1","event":"connect"}',
+      const connectByKey: Record<string, ControllerPayload> = {
+        "1": {
+          raw: '{"event":"connect","playerId":"player1"}',
           event: "connect",
-          id: "m5stick-player1",
           playerId: "player1",
-        });
-        return;
-      }
-
-      // デバッグ用: キー2 = プレイヤー2のコントローラーが接続
-      if (key === "2") {
-        handlePayload({
-          raw: '{"id":"m5stick-player2","event":"connect"}',
+        },
+        "2": {
+          raw: '{"event":"connect","playerId":"player2"}',
           event: "connect",
-          id: "m5stick-player2",
           playerId: "player2",
-        });
+        },
+      };
+
+      const connectPayload = connectByKey[key];
+      if (connectPayload) {
+        handlePayload(connectPayload);
         return;
       }
 
@@ -166,17 +210,17 @@ export function PlayFeature() {
   };
 
   const pairedDrawingIds = useMemo(
-    () => new Set(pairings.values()),
+    () => new Set(Array.from(pairings.values()).map((p) => p.drawingId)),
     [pairings],
   );
 
   // 表示する用のペアリング情報（描画が主キー）
   const stagePairings = useMemo(() => {
-    const map = new Map<string, { position: Position; controllerId: string }>();
-    for (const [controllerId, drawingId] of pairings.entries()) {
-      map.set(drawingId, {
-        position: positions.get(drawingId) ?? { x: 0, y: 0 },
-        controllerId,
+    const map = new Map<string, { position: Position; playerId: string }>();
+    for (const [, pairing] of pairings.entries()) {
+      map.set(pairing.drawingId, {
+        position: positions.get(pairing.drawingId) ?? { x: 0, y: 0 },
+        playerId: pairing.playerId,
       });
     }
     return map;
@@ -184,18 +228,18 @@ export function PlayFeature() {
 
   // P1/P2が接続している絵を取得
   const player1Drawing = useMemo(() => {
-    for (const [controllerId, drawingId] of pairings.entries()) {
-      if (controllerId.includes("player1")) {
-        return drawings.find((d) => d.id === drawingId);
+    for (const [, pairing] of pairings.entries()) {
+      if (pairing.playerId === "player1") {
+        return drawings.find((d) => d.id === pairing.drawingId);
       }
     }
     return null;
   }, [pairings, drawings]);
 
   const player2Drawing = useMemo(() => {
-    for (const [controllerId, drawingId] of pairings.entries()) {
-      if (controllerId.includes("player2")) {
-        return drawings.find((d) => d.id === drawingId);
+    for (const [, pairing] of pairings.entries()) {
+      if (pairing.playerId === "player2") {
+        return drawings.find((d) => d.id === pairing.drawingId);
       }
     }
     return null;

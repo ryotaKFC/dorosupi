@@ -61,12 +61,11 @@ export function RaceGame({
   const resolvePlayerFromPayload = useCallback(
     (payload: ControllerPayload): 1 | 2 | null => {
       const playerId = payload.playerId?.toLowerCase();
-      const controllerId = payload.id?.toLowerCase();
 
-      if (playerId?.includes("player1") || controllerId?.includes("player1")) {
+      if (playerId?.includes("player1")) {
         return 1;
       }
-      if (playerId?.includes("player2") || controllerId?.includes("player2")) {
+      if (playerId?.includes("player2")) {
         return 2;
       }
       return null;

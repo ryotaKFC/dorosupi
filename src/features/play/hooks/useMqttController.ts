@@ -141,6 +141,7 @@ export function useMqttController({
     });
 
     client.on("message", (receivedTopic, payload) => {
+      console.log("[MQTT] Received", receivedTopic, payload.toString());
       const normalized = normalizePayload(payload as Buffer, receivedTopic);
       setLastPayload(normalized);
       onPayloadRef.current?.(normalized);
