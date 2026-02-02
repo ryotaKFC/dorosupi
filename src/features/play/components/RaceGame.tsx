@@ -77,8 +77,8 @@ export function RaceGame({
     (player: 1 | 2) => {
       if (gamePhase !== "race" || winner) return;
 
-      // ランダムな移動幅（1.5〜3.5の範囲）
-      const randomMove = 1.5 + Math.random() * 2;
+      // ランダムな移動幅（0.75〜1.75の範囲）
+      const randomMove = 0.75 + Math.random() * 1;
 
       if (player === 1) {
         setPlayer1Position((prev) => {
